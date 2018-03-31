@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package com.gameole.iri.stream.messages;
+
+message NodeStatisticMessage {
+    int32 toProcess = 1;
+    int32 toBroadcast = 2;
+    int32 toRequest = 3;
+    int32 toReply = 4;
+    int32 totalTransactions = 5;
+    string nodeName = 6;
+}
+
+message AddedNeighborMessage {
+    string address = 1;
+}
+
+message AddedNonTetheredNeighborMessage {
+    string uri = 1;
+}
+
+message RefusedNonTetheredNeighborMessage {
+    string uri = 1;
+    int32 maxPeersAllowed = 2;
+}
+
+message ValidatingDNSMessage{
+    string hostname = 1;
+    string ip = 2;
+}
+
+message ValidDNSMessage{
+    string hostname = 1;
+}
+
+message ChangedIPMessage{
+    string hostname = 1;
+}
