@@ -25,18 +25,6 @@ class IRIStream(val host: String, val port: Int, val protocol: String) {
   def filter(t: ValidDNSMessage): Stream[ValidDNSMessage] = stream.validDNS
   def filter(t: ChangedIPMessage): Stream[ChangedIPMessage] = stream.changedIP
 
-
-  def unconfirmedTransactions: Stream[UnconfirmedTransactionMessage] = stream.unconfirmedTransactions
-  def confirmedTransactions: Stream[ConfirmedTransactionMessage] = stream.confirmedTransactions
-  def invalidTransactions: Stream[InvalidTransactionMessage] = stream.invalidTransactions
-  def nodeStatistics: Stream[NodeStatisticMessage] = stream.nodeStatistics
-  def addedNeighbors: Stream[AddedNeighborMessage] = stream.addedNeighbors
-  def addedNonTetheredNeighbors: Stream[AddedNonTetheredNeighborMessage] = stream.addedNonTetheredNeighbors
-  def refusedNonTetheredNeighbors: Stream[RefusedNonTetheredNeighborMessage] = stream.refusedNonTetheredNeighbors
-  def validatingDNS: Stream[ValidatingDNSMessage] = stream.validatingDNS
-  def validDNS: Stream[ValidDNSMessage] = stream.validDNS
-  def changedIPs: Stream[ChangedIPMessage] = stream.changedIP
-
   implicit class streamParser(stream: Stream[ZeroMQMessage]){
     val zeroMQMessageParser = new ZeroMQMessageParser
 
