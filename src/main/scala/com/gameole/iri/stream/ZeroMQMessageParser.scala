@@ -2,188 +2,313 @@ package com.gameole.iri.stream
 
 import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
 import com.gameole.iri.stream.messages.nodeMessages._
-import com.gameole.iri.stream.messages.transactionMessages.{ConfirmedTransactionMessage, InvalidTransactionMessage, UnconfirmedTransactionMessage}
-import org.slf4j.LoggerFactory
+import com.gameole.iri.stream.messages.transactionMessages._
+import org.apache.logging.log4j.scala.Logging
+import org.apache.logging.log4j.Level
 
 
-class ZeroMQMessageParser {
-  private val logger = LoggerFactory.getLogger(classOf[ZeroMQMessageParser])
+class ZeroMQMessageParser extends Logging{
+  logger.info("Create Instance of ZeroMQMessageParser")
 
-  def parseConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): ConfirmedTransactionMessage = {
+  private def isTrytes(s: String): Boolean =
+    s.map(char => (char.isLetter && char.isUpper) || char.toInt == 9).forall(_ == true)
+  private def isAlpha(s: String): Boolean = s.forall(_.isLetter)
+  private def isNumber(s: String): Boolean = s.forall(_.isDigit)
+  private def isHostname(s: String): Boolean =
+    s.map(char => char == '.' || (char.isLetter && char.isLower) || char.isDigit).forall(_ == true)
+  private def isIP(s: String): Boolean = s.map(char => char == '.' || char.isDigit).forall(_ == true)
+  private def isURI(s: String): Boolean = isHostname(s) || isIP(s)
+
+  private def logWrongFormat(message: ZeroMQMessage): Unit = {
+    logger.debug("Message is not in the expected format.")
+    logger.debug("Message type: " + message.messageType)
+    logger.debug("Message content: " + message.message)
+  }
+
+  def parseConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[ConfirmedTransactionMessage] = {
     logger.debug("Parse ConfirmedTransactionMessage [ZeroMQ message]...")
 
-    val confirmedTransactionMessage = ConfirmedTransactionMessage(
-      milestoneIndex = zeroMQMessage.message.head.toInt,
-      transactionHash = zeroMQMessage.message(1),
-      addressHash = zeroMQMessage.message(2),
-      trunkHash = zeroMQMessage.message(3),
-      branchHash = zeroMQMessage.message(4),
-      bundleHash = zeroMQMessage.message(5)
-    )
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Confirmed with milestone index: " + confirmedTransactionMessage.milestoneIndex)
-    logger.debug("Transaction Hash: " + confirmedTransactionMessage.transactionHash)
-    logger.debug("Address Hash: " + confirmedTransactionMessage.addressHash)
-    logger.debug("Trunk Hash: " + confirmedTransactionMessage.trunkHash)
-    logger.debug("Branch Hash: " + confirmedTransactionMessage.branchHash)
-    logger.debug("Bundle Hash: " + confirmedTransactionMessage.bundleHash)
+    if(
+      messageContent.length == 6 && messageType == "sn" &&
+        isNumber(messageContent.head) && messageContent.tail.forall(isTrytes)
+    ){
+      val confirmedTransactionMessage = ConfirmedTransactionMessage(
+        milestoneIndex = messageContent.head.toInt,
+        transactionHash = messageContent(1),
+        addressHash = messageContent(2),
+        trunkHash = messageContent(3),
+        branchHash = messageContent(4),
+        bundleHash = messageContent(5)
+      )
 
-    confirmedTransactionMessage
+      logger.debug("Confirmed with milestone index: " + confirmedTransactionMessage.milestoneIndex)
+      logger.debug("Transaction Hash: " + confirmedTransactionMessage.transactionHash)
+      logger.debug("Address Hash: " + confirmedTransactionMessage.addressHash)
+      logger.debug("Trunk Hash: " + confirmedTransactionMessage.trunkHash)
+      logger.debug("Branch Hash: " + confirmedTransactionMessage.branchHash)
+      logger.debug("Bundle Hash: " + confirmedTransactionMessage.bundleHash)
+
+      Some(confirmedTransactionMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseUnconfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): UnconfirmedTransactionMessage = {
+  def parseUnconfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[UnconfirmedTransactionMessage] = {
     logger.debug("Parse UnconfirmedTransactionMessage [ZeroMQ message]...")
 
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    val unconfirmedTransactionMessage = UnconfirmedTransactionMessage(
-      transactionHash = zeroMQMessage.message.head,
-      addressHash = zeroMQMessage.message(1),
-      amount = zeroMQMessage.message(2).toLong,
-      tagHash = zeroMQMessage.message(3),
-      timestamp = zeroMQMessage.message(4).toLong * 1000,
-      indexInBundle = zeroMQMessage.message(5).toInt,
-      maxIndexInBundle = zeroMQMessage.message(6).toInt,
-      bundleHash = zeroMQMessage.message(7),
-      trunkHash = zeroMQMessage.message(8),
-      branchHash = zeroMQMessage.message(9)
-    )
+    if(
+      messageType == "tx" && messageContent.length == 10 &&
+        messageContent.takeRight(3).forall(isTrytes) &&
+        messageContent.take(2).forall(isTrytes) &&
+        isTrytes(messageContent(3)) &&
+        messageContent.slice(4, 6).forall(isNumber)
+    ){
+      val unconfirmedTransactionMessage = UnconfirmedTransactionMessage(
+        transactionHash = zeroMQMessage.message.head,
+        addressHash = zeroMQMessage.message(1),
+        amount = zeroMQMessage.message(2).toLong,
+        tagHash = zeroMQMessage.message(3),
+        timestamp = zeroMQMessage.message(4).toInt * 1000,
+        indexInBundle = zeroMQMessage.message(5).toInt,
+        maxIndexInBundle = zeroMQMessage.message(6).toInt,
+        bundleHash = zeroMQMessage.message(7),
+        trunkHash = zeroMQMessage.message(8),
+        branchHash = zeroMQMessage.message(9)
+      )
 
-    logger.debug("Transaction hash: " + unconfirmedTransactionMessage.transactionHash)
-    logger.debug("Iota amount: " + unconfirmedTransactionMessage.amount)
-    logger.debug("Tag hash: " + unconfirmedTransactionMessage.tagHash)
-    logger.debug("Index in bundle: " + unconfirmedTransactionMessage.indexInBundle)
-    logger.debug("Max index of bundle: " + unconfirmedTransactionMessage.maxIndexInBundle)
-    logger.debug("Trunk hash: " + unconfirmedTransactionMessage.trunkHash)
-    logger.debug("Branch hash: " + unconfirmedTransactionMessage.branchHash)
-    logger.debug("Address hash: " + unconfirmedTransactionMessage.addressHash)
-    logger.debug("Date Time: " + unconfirmedTransactionMessage.timestamp)
+      logger.debug("Transaction hash: " + unconfirmedTransactionMessage.transactionHash)
+      logger.debug("Iota amount: " + unconfirmedTransactionMessage.amount)
+      logger.debug("Tag hash: " + unconfirmedTransactionMessage.tagHash)
+      logger.debug("Index in bundle: " + unconfirmedTransactionMessage.indexInBundle)
+      logger.debug("Max index of bundle: " + unconfirmedTransactionMessage.maxIndexInBundle)
+      logger.debug("Trunk hash: " + unconfirmedTransactionMessage.trunkHash)
+      logger.debug("Branch hash: " + unconfirmedTransactionMessage.branchHash)
+      logger.debug("Address hash: " + unconfirmedTransactionMessage.addressHash)
+      logger.debug("Date Time: " + unconfirmedTransactionMessage.timestamp)
 
-    unconfirmedTransactionMessage
+      Some(unconfirmedTransactionMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseInvalidTransactionMessage(zeroMQMessage: ZeroMQMessage): InvalidTransactionMessage = {
+  def parseInvalidTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[InvalidTransactionMessage] = {
     logger.debug("Parse InvalidTransactionMessage [ZeroMQ message]...")
 
-    val reason: String = zeroMQMessage.messageType match{
-      case "rtsn" => "null value"
-      case "rtss" => "!checkSolidity"
-      case "rtsv" => "!LedgerValidator"
-      case "rtsd" => "extraTip"
-      case "rtst" => "tip"
-      case _ => "unknown"
+    val messageContent = zeroMQMessage.message
+    val messageType = zeroMQMessage.messageType
+
+    if(messageContent.length == 1 && isTrytes(messageContent.head) && isAlpha(messageType)){
+      val reason: String = zeroMQMessage.messageType match{
+        case "rtsn" => "null value"
+        case "rtss" => "!checkSolidity"
+        case "rtsv" => "!LedgerValidator"
+        case "rtsd" => "extraTip"
+        case "rtst" => "tip"
+        case _ => "unknown"
+      }
+
+      val invalidTransactionMessage = InvalidTransactionMessage(zeroMQMessage.message.head, reason)
+
+      logger.debug("Transaction hash: " + invalidTransactionMessage.transactionHash)
+      logger.debug("Reason for Invalidity: " + invalidTransactionMessage.reason)
+
+      Some(invalidTransactionMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
     }
-
-    val invalidTransactionMessage = InvalidTransactionMessage(zeroMQMessage.message.head, reason)
-
-    logger.debug("Transaction hash: " + invalidTransactionMessage.transactionHash)
-    logger.debug("Reason for Invalidity: " + invalidTransactionMessage.reason)
-
-    invalidTransactionMessage
   }
 
-  def parseLatestMilestoneIndexMessage(zeroMQMessage: ZeroMQMessage): LatestMilestoneIndexMessage = {
+  def parseLatestMilestoneIndexMessage(zeroMQMessage: ZeroMQMessage): Option[LatestMilestoneIndexMessage] = {
     logger.debug("Parse LatestMilestoneIndexMessage [ZeroMQ message]...")
 
-    val latestMilestoneIndexMessage =
-      LatestMilestoneIndexMessage(zeroMQMessage.message.head.toInt, zeroMQMessage.message(1).toInt)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Previous Milestone: " + latestMilestoneIndexMessage.previousIndex)
-    logger.debug("Latest Milestone: " + latestMilestoneIndexMessage.latestIndex)
+    if(messageType == "lmi" && messageContent.forall(isNumber)){
+      val latestMilestoneIndexMessage =
+        LatestMilestoneIndexMessage(zeroMQMessage.message.head.toInt, zeroMQMessage.message(1).toInt)
 
-    latestMilestoneIndexMessage
+      logger.debug("Previous Milestone: " + latestMilestoneIndexMessage.previousIndex)
+      logger.debug("Latest Milestone: " + latestMilestoneIndexMessage.latestIndex)
+
+      Some(latestMilestoneIndexMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseNodeStatisticMessage(zeroMQMessage: ZeroMQMessage): NodeStatisticMessage = {
+  def parseNodeStatisticMessage(zeroMQMessage: ZeroMQMessage): Option[NodeStatisticMessage] = {
     logger.debug("Parse NodeStatisticMessage [ZeroMQ message]...")
 
-    val nodeStatisticMessage = NodeStatisticMessage(
-      zeroMQMessage.message.head.toInt,
-      zeroMQMessage.message(1).toInt,
-      zeroMQMessage.message(2).toInt,
-      zeroMQMessage.message(3).toInt,
-      zeroMQMessage.message(4).toInt
-    )
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("To process: " + nodeStatisticMessage.toProcess)
-    logger.debug("To broadcast: " + nodeStatisticMessage.toBroadcast)
-    logger.debug("To Request: " + nodeStatisticMessage.toRequest)
-    logger.debug("To Reply: " + nodeStatisticMessage.toReply)
-    logger.debug("Total Transactions: " + nodeStatisticMessage.totalTransactions)
+    if(messageType == "rstat" && messageContent.length == 5 && messageContent.forall(isNumber)){
+      val nodeStatisticMessage = NodeStatisticMessage(
+        zeroMQMessage.message.head.toInt,
+        zeroMQMessage.message(1).toInt,
+        zeroMQMessage.message(2).toInt,
+        zeroMQMessage.message(3).toInt,
+        zeroMQMessage.message(4).toInt
+      )
 
-    nodeStatisticMessage
+      logger.debug("To process: " + nodeStatisticMessage.toProcess)
+      logger.debug("To broadcast: " + nodeStatisticMessage.toBroadcast)
+      logger.debug("To Request: " + nodeStatisticMessage.toRequest)
+      logger.debug("To Reply: " + nodeStatisticMessage.toReply)
+      logger.debug("Total Transactions: " + nodeStatisticMessage.totalTransactions)
+
+      Some(nodeStatisticMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseAddedNeighborMessage(zeroMQMessage: ZeroMQMessage): AddedNeighborMessage = {
+  def parseAddedNeighborMessage(zeroMQMessage: ZeroMQMessage): Option[AddedNeighborMessage] = {
     logger.debug("Parse AddedNeighborMessage [ZeroMQ message]...")
 
-    val addedNeighborMessage = AddedNeighborMessage(zeroMQMessage.message.head)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Address: " + addedNeighborMessage.address)
+    if(messageType == "->" && messageContent.length == 1 && isURI(messageContent.head)){
+      val addedNeighborMessage = AddedNeighborMessage(zeroMQMessage.message.head)
 
-    addedNeighborMessage
+      logger.debug("Address: " + addedNeighborMessage.address)
+
+      Some(addedNeighborMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage): AddedNonTetheredNeighborMessage = {
-    logger.debug("Parse NonTetheredNeighborMessage [ZeroMQ message]...")
+  def parseAddedNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage): Option[AddedNonTetheredNeighborMessage] = {
+    logger.debug("Parse AddedNonTetheredNeighborMessage [ZeroMQ message]...")
 
-    val nonTetheredNeighborMessage = AddedNonTetheredNeighborMessage(zeroMQMessage.message.head)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("URI: " + nonTetheredNeighborMessage.uri)
+    logger.info("isURI: " + isURI(messageContent.head))
 
-    nonTetheredNeighborMessage
+    if(messageType == "antn" && messageContent.length == 1 && isURI(messageContent.head)){
+      val nonTetheredNeighborMessage = AddedNonTetheredNeighborMessage(zeroMQMessage.message.head)
+
+      logger.debug("URI: " + nonTetheredNeighborMessage.uri)
+
+      Some(nonTetheredNeighborMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseRefusedNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage): RefusedNonTetheredNeighborMessage = {
+  def parseRefusedNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage): Option[RefusedNonTetheredNeighborMessage] = {
     logger.debug("Parse RefusedNonTetheredNeighborMessage [ZeroMQ message]...")
 
-    val refusedNonTetheredNeighborMessage =
-      RefusedNonTetheredNeighborMessage(zeroMQMessage.message.head, zeroMQMessage.message(1).toInt)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("URI: " + refusedNonTetheredNeighborMessage.uri)
-    logger.debug("Max peers allowed: " + refusedNonTetheredNeighborMessage.maxPeersAllowed)
+    if(
+      messageType == "rntn" && messageContent.length == 2 &&
+        isURI(messageContent.head) && isNumber(messageContent(1))
+    ){
+        val refusedNonTetheredNeighborMessage =
+          RefusedNonTetheredNeighborMessage(zeroMQMessage.message.head, zeroMQMessage.message(1).toInt)
 
-    refusedNonTetheredNeighborMessage
+        logger.debug("URI: " + refusedNonTetheredNeighborMessage.uri)
+        logger.debug("Max peers allowed: " + refusedNonTetheredNeighborMessage.maxPeersAllowed)
+
+        Some(refusedNonTetheredNeighborMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseValidatingDNSMessage(zeroMQMessage: ZeroMQMessage): ValidatingDNSMessage = {
+  def parseValidatingDNSMessage(zeroMQMessage: ZeroMQMessage): Option[ValidatingDNSMessage] = {
     logger.debug("Parse ValidatingDNSMessage [ZeroMQ message]...")
 
-    val validatingDNSMessage = ValidatingDNSMessage(zeroMQMessage.message.head, zeroMQMessage.message(1))
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Hostname: " + validatingDNSMessage.hostname)
-    logger.debug("IP: " + validatingDNSMessage.ip)
+    if(messageType == "dnscv" && messageContent.length == 2 && isHostname(messageContent.head) && isIP(messageContent(1))){
+      val validatingDNSMessage = ValidatingDNSMessage(zeroMQMessage.message.head, zeroMQMessage.message(1))
 
-    validatingDNSMessage
+      logger.debug("Hostname: " + validatingDNSMessage.hostname)
+      logger.debug("IP: " + validatingDNSMessage.ip)
+
+      Some(validatingDNSMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseValidDNSMessage(zeroMQMessage: ZeroMQMessage): ValidDNSMessage = {
+  def parseValidDNSMessage(zeroMQMessage: ZeroMQMessage): Option[ValidDNSMessage] = {
     logger.debug("Parse ValidDNSMessage [ZeroMQ message]...")
 
-    val validDNSMessage = ValidDNSMessage(zeroMQMessage.message.head)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Hostname: " + validDNSMessage.hostname)
+    if(messageType == "dnscc" && messageContent.length == 1 && isHostname(messageContent.head)){
+      val validDNSMessage = ValidDNSMessage(zeroMQMessage.message.head)
 
-    validDNSMessage
+      logger.debug("Hostname: " + validDNSMessage.hostname)
+
+      Some(validDNSMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseChangedIPMessage(zeroMQMessage: ZeroMQMessage): ChangedIPMessage = {
+  def parseChangedIPMessage(zeroMQMessage: ZeroMQMessage): Option[ChangedIPMessage] = {
     logger.debug("Parse ValidDNSMessage [ZeroMQ message]...")
 
-    val changedIPMessage = ChangedIPMessage(zeroMQMessage.message.head)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Hostname: " + changedIPMessage.hostname)
+    if(messageType == "dnscu" && messageContent.length == 1 && isHostname(messageContent.head)){
+      val changedIPMessage = ChangedIPMessage(zeroMQMessage.message.head)
 
-    changedIPMessage
+      logger.debug("Hostname: " + changedIPMessage.hostname)
+
+      Some(changedIPMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
-  def parseLatestSolidSubtangleMilestoneHashMessage(zeroMQMessage: ZeroMQMessage): LatestSolidSubtangleMilestoneMessage = {
-    logger.debug("Parse LatestMilestoneHashMessage [ZeroMQ message]...")
+  def parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage: ZeroMQMessage): Option[LatestSolidSubtangleMilestoneMessage] = {
+    logger.debug("Parse LatestSolidSubtangleMilestoneMessage [ZeroMQ message]...")
 
-    val latestSolidSubtangleMilestoneMessage = LatestSolidSubtangleMilestoneMessage(zeroMQMessage.message.head)
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
 
-    logger.debug("Latest solid subtangle milestone hash: " + latestSolidSubtangleMilestoneMessage.hash)
+    if(messageType == "lmhs" && messageContent.length == 1 && isTrytes(messageContent.head)){
+      val latestSolidSubtangleMilestoneMessage = LatestSolidSubtangleMilestoneMessage(zeroMQMessage.message.head)
 
-    latestSolidSubtangleMilestoneMessage
+      logger.debug("Latest solid subtangle milestone hash: " + latestSolidSubtangleMilestoneMessage.hash)
+
+      Some(latestSolidSubtangleMilestoneMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
   }
 
 }

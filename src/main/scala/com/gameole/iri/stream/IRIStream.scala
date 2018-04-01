@@ -2,10 +2,10 @@ package com.gameole.iri.stream
 
 import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
-import org.slf4j.LoggerFactory
+import org.apache.logging.log4j.scala.Logging
+import org.apache.logging.log4j.Level
 
-class IRIStream(val host: String, val port: Int, val protocol: String) {
-  private val logger = LoggerFactory.getLogger("IRIStream")
+class IRIStream(val host: String, val port: Int, val protocol: String) extends Logging{
 
   logger.debug("Create ZeroMQ Connection...")
   val connectionConfiguration = new ServerConnectionConf(host, port, protocol)
@@ -29,35 +29,46 @@ class IRIStream(val host: String, val port: Int, val protocol: String) {
     val zeroMQMessageParser = new ZeroMQMessageParser
 
     def unconfirmedTransactions: Stream[UnconfirmedTransactionMessage] =
-      stream.filter(_.messageType == "tx").map(zeroMQMessageParser.parseUnconfirmedTransactionMessage)
+      stream.filter(_.messageType == "tx")
+        .map(zeroMQMessageParser.parseUnconfirmedTransactionMessage)
+        .filter(_.isDefined).map(_.get)
 
     def confirmedTransactions: Stream[ConfirmedTransactionMessage] =
-      stream.filter(_.messageType == "sn").map(zeroMQMessageParser.parseConfirmedTransactionMessage)
+      stream.filter(_.messageType == "sn")
+        .map(zeroMQMessageParser.parseConfirmedTransactionMessage)
+        .filter(_.isDefined).map(_.get)
 
     def invalidTransactions: Stream[InvalidTransactionMessage] =
       stream.filter(m => {
         m.messageType == "rtsn" | m.messageType == "rtss" | m.messageType == "rtsv" | m.messageType == "rtsd"
-      }).map(zeroMQMessageParser.parseInvalidTransactionMessage)
+      }).map(zeroMQMessageParser.parseInvalidTransactionMessage).filter(_.isDefined).map(_.get)
 
     def nodeStatistics: Stream[NodeStatisticMessage] =
-      stream.filter(_.messageType == "rstat").map(zeroMQMessageParser.parseNodeStatisticMessage)
+      stream.filter(_.messageType == "rstat")
+        .map(zeroMQMessageParser.parseNodeStatisticMessage).filter(_.isDefined).map(_.get)
 
     def addedNeighbors: Stream[AddedNeighborMessage] =
-      stream.filter(_.messageType == "->").map(zeroMQMessageParser.parseAddedNeighborMessage)
+      stream.filter(_.messageType == "->")
+        .map(zeroMQMessageParser.parseAddedNeighborMessage).filter(_.isDefined).map(_.get)
 
     def addedNonTetheredNeighbors: Stream[AddedNonTetheredNeighborMessage] =
-      stream.filter(_.messageType == "antn").map(zeroMQMessageParser.parseNonTetheredNeighborMessage)
+      stream.filter(_.messageType == "antn")
+        .map(zeroMQMessageParser.parseAddedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
 
     def refusedNonTetheredNeighbors: Stream[RefusedNonTetheredNeighborMessage] =
-      stream.filter(_.messageType == "rntn").map(zeroMQMessageParser.parseRefusedNonTetheredNeighborMessage)
+      stream.filter(_.messageType == "rntn")
+        .map(zeroMQMessageParser.parseRefusedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
 
     def validatingDNS: Stream[ValidatingDNSMessage] =
-      stream.filter(_.messageType == "dnscv").map(zeroMQMessageParser.parseValidatingDNSMessage)
+      stream.filter(_.messageType == "dnscv")
+        .map(zeroMQMessageParser.parseValidatingDNSMessage).filter(_.isDefined).map(_.get)
 
     def validDNS: Stream[ValidDNSMessage] =
-      stream.filter(_.messageType == "dnscc").map(zeroMQMessageParser.parseValidDNSMessage)
+      stream.filter(_.messageType == "dnscc")
+        .map(zeroMQMessageParser.parseValidDNSMessage).filter(_.isDefined).map(_.get)
 
     def changedIP: Stream[ChangedIPMessage] =
-      stream.filter(_.messageType == "dnscu").map(zeroMQMessageParser.parseChangedIPMessage)
+      stream.filter(_.messageType == "dnscu")
+        .map(zeroMQMessageParser.parseChangedIPMessage).filter(_.isDefined).map(_.get)
   }
 }

@@ -8,7 +8,6 @@ message NodeStatisticMessage {
     int32 toRequest = 3;
     int32 toReply = 4;
     int32 totalTransactions = 5;
-    string nodeName = 6;
 }
 
 message AddedNeighborMessage {

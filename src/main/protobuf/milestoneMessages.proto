@@ -9,11 +9,9 @@ message LatestSolidSubtangleMilestoneIndexMessage{
 
 message LatestSolidSubtangleMilestoneMessage{
     string hash = 1;
-    string nodeName = 6;
 }
 
 message LatestMilestoneIndexMessage{
     int32 previousIndex = 1;
     int32 latestIndex = 2;
-    string nodeName = 6;
 }

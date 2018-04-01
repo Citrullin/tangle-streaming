@@ -13,13 +13,11 @@ message UnconfirmedTransactionMessage {
     int64 timestamp = 8;
     int32 indexInBundle = 9;
     int32 maxIndexInBundle = 10;
-    string nodeName = 11;
 }
 
 message InvalidTransactionMessage {
     string transactionHash = 1;
     string reason = 2;
-    string nodeName = 3;
 }
 
 message ConfirmedTransactionMessage {
@@ -29,5 +27,4 @@ message ConfirmedTransactionMessage {
     string trunkHash = 4;
     string branchHash = 5;
     int32 milestoneIndex = 6;
-    string nodeName = 7;
 }

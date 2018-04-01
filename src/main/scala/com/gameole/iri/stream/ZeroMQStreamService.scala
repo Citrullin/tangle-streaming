@@ -1,12 +1,13 @@
 package com.gameole.iri.stream
 
-import org.slf4j.LoggerFactory
+import org.apache.logging.log4j.scala.Logging
+import org.apache.logging.log4j.Level
 import org.zeromq.ZMQ
 import org.zeromq.ZMQ.Socket
 
 
-class ZeroMQStreamService(zeroMQServer: ServerConnectionConf, topic: String) {
-  private val logger = LoggerFactory.getLogger(classOf[ZeroMQStreamService])
+class ZeroMQStreamService(zeroMQServer: ServerConnectionConf, topic: String) extends Logging{
+  logger.info("Start ZeroMQStreamService...")
 
   val context: ZMQ.Context = ZMQ.context(1)
   val subscriber: Socket = context.socket(ZMQ.SUB)
