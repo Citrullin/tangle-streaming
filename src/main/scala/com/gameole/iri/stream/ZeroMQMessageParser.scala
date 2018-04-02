@@ -11,7 +11,7 @@ class ZeroMQMessageParser extends Logging{
   logger.info("Create Instance of ZeroMQMessageParser")
 
   private def isTrytes(s: String): Boolean =
-    s.map(char => (char.isLetter && char.isUpper) || char.toInt == 9).forall(_ == true)
+    s.map(char => (char.isLetter && char.isUpper) || (char == '9')).forall(_ == true)
   private def isAlpha(s: String): Boolean = s.forall(_.isLetter)
   private def isNumber(s: String): Boolean = s.forall(_.isDigit)
   private def isHostname(s: String): Boolean =
@@ -65,10 +65,11 @@ class ZeroMQMessageParser extends Logging{
     val messageContent = zeroMQMessage.message
 
     if(
-      messageType == "tx" && messageContent.length == 10 &&
-        messageContent.takeRight(3).forall(isTrytes) &&
+      messageType == "tx" && messageContent.length == 11 &&
+        messageContent.slice(0, 10).takeRight(3).forall(isTrytes) &&
         messageContent.take(2).forall(isTrytes) &&
         isTrytes(messageContent(3)) &&
+        isNumber(messageContent(2)) &&
         messageContent.slice(4, 6).forall(isNumber)
     ){
       val unconfirmedTransactionMessage = UnconfirmedTransactionMessage(
