@@ -14,7 +14,7 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   val streamService = new ZeroMQStreamService(connectionConfiguration, "")
 
   logger.debug("Get ZeroMQ Stream...")
-  private def stream = streamService.getMessageStream
+  private val stream = streamService.getMessageStream
   val messageParser = new ZeroMQMessageParser
 
   def filter(t: UnconfirmedTransactionMessage): Stream[UnconfirmedTransactionMessage] = stream.unconfirmedTransactions
@@ -33,10 +33,8 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   def filter(t: LatestSolidSubtangleMilestoneMessage): Stream[LatestSolidSubtangleMilestoneMessage] =
     stream.latestSolidSubtangleMilestone
 
-  def foreach(f: GeneratedMessage => Unit): Unit = stream.foreach{
-    case m: GeneratedMessage => f(m)
-    case _ => logger.error("Message is not a GeneratedMessage.")
-  }
+  def foreach(f: GeneratedMessage => Unit): Unit =
+    stream.map(messageParser.parse).filter(_.isDefined).map(_.get).foreach(f(_))
 
   def map[T](f: Option[GeneratedMessage] => T): Stream[T] = stream.map(m => f(messageParser.parse(m)))
 
