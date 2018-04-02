@@ -1,5 +1,6 @@
 package com.gameole.iri.stream
 
+import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
 import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
@@ -19,56 +20,74 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   def filter(t: InvalidTransactionMessage): Stream[InvalidTransactionMessage] = stream.invalidTransactions
   def filter(t: NodeStatisticMessage): Stream[NodeStatisticMessage] = stream.nodeStatistics
   def filter(t: AddedNeighborMessage): Stream[AddedNeighborMessage] = stream.addedNeighbors
-  def filter(t: AddedNonTetheredNeighborMessage): Stream[AddedNonTetheredNeighborMessage] = stream.addedNonTetheredNeighbors
-  def filter(t: RefusedNonTetheredNeighborMessage): Stream[RefusedNonTetheredNeighborMessage] = stream.refusedNonTetheredNeighbors
+  def filter(t: AddedNonTetheredNeighborMessage): Stream[AddedNonTetheredNeighborMessage] =
+    stream.addedNonTetheredNeighbors
+  def filter(t: RefusedNonTetheredNeighborMessage): Stream[RefusedNonTetheredNeighborMessage] =
+    stream.refusedNonTetheredNeighbors
   def filter(t: ValidatingDNSMessage): Stream[ValidatingDNSMessage] = stream.validatingDNS
   def filter(t: ValidDNSMessage): Stream[ValidDNSMessage] = stream.validDNS
   def filter(t: ChangedIPMessage): Stream[ChangedIPMessage] = stream.changedIP
+  def filter(t: LatestMilestoneIndexMessage): Stream[LatestMilestoneIndexMessage] = stream.latestMilestoneIndex
+  def filter(t: LatestSolidSubtangleMilestoneMessage): Stream[LatestSolidSubtangleMilestoneMessage] =
+    stream.latestSolidSubtangleMilestone
+
+  def close(): Unit = {
+    logger.debug("Close IRIStream...")
+    streamService.close()
+  }
 
   implicit class streamParser(stream: Stream[ZeroMQMessage]){
-    val zeroMQMessageParser = new ZeroMQMessageParser
+    val messageParser = new ZeroMQMessageParser
 
     def unconfirmedTransactions: Stream[UnconfirmedTransactionMessage] =
       stream.filter(_.messageType == "tx")
-        .map(zeroMQMessageParser.parseUnconfirmedTransactionMessage)
+        .map(messageParser.parseUnconfirmedTransactionMessage)
         .filter(_.isDefined).map(_.get)
 
     def confirmedTransactions: Stream[ConfirmedTransactionMessage] =
       stream.filter(_.messageType == "sn")
-        .map(zeroMQMessageParser.parseConfirmedTransactionMessage)
+        .map(messageParser.parseConfirmedTransactionMessage)
         .filter(_.isDefined).map(_.get)
 
     def invalidTransactions: Stream[InvalidTransactionMessage] =
       stream.filter(m => {
         m.messageType == "rtsn" | m.messageType == "rtss" | m.messageType == "rtsv" | m.messageType == "rtsd"
-      }).map(zeroMQMessageParser.parseInvalidTransactionMessage).filter(_.isDefined).map(_.get)
+      }).map(messageParser.parseInvalidTransactionMessage).filter(_.isDefined).map(_.get)
 
     def nodeStatistics: Stream[NodeStatisticMessage] =
       stream.filter(_.messageType == "rstat")
-        .map(zeroMQMessageParser.parseNodeStatisticMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseNodeStatisticMessage).filter(_.isDefined).map(_.get)
 
     def addedNeighbors: Stream[AddedNeighborMessage] =
       stream.filter(_.messageType == "->")
-        .map(zeroMQMessageParser.parseAddedNeighborMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseAddedNeighborMessage).filter(_.isDefined).map(_.get)
 
     def addedNonTetheredNeighbors: Stream[AddedNonTetheredNeighborMessage] =
       stream.filter(_.messageType == "antn")
-        .map(zeroMQMessageParser.parseAddedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseAddedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
 
     def refusedNonTetheredNeighbors: Stream[RefusedNonTetheredNeighborMessage] =
       stream.filter(_.messageType == "rntn")
-        .map(zeroMQMessageParser.parseRefusedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseRefusedNonTetheredNeighborMessage).filter(_.isDefined).map(_.get)
 
     def validatingDNS: Stream[ValidatingDNSMessage] =
       stream.filter(_.messageType == "dnscv")
-        .map(zeroMQMessageParser.parseValidatingDNSMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseValidatingDNSMessage).filter(_.isDefined).map(_.get)
 
     def validDNS: Stream[ValidDNSMessage] =
       stream.filter(_.messageType == "dnscc")
-        .map(zeroMQMessageParser.parseValidDNSMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseValidDNSMessage).filter(_.isDefined).map(_.get)
 
     def changedIP: Stream[ChangedIPMessage] =
       stream.filter(_.messageType == "dnscu")
-        .map(zeroMQMessageParser.parseChangedIPMessage).filter(_.isDefined).map(_.get)
+        .map(messageParser.parseChangedIPMessage).filter(_.isDefined).map(_.get)
+
+    def latestMilestoneIndex: Stream[LatestMilestoneIndexMessage] =
+      stream.filter(_.messageType == "lmi")
+        .map(messageParser.parseLatestMilestoneIndexMessage).filter(_.isDefined).map(_.get)
+
+    def latestSolidSubtangleMilestone: Stream[LatestSolidSubtangleMilestoneMessage] =
+      stream.filter(_.messageType == "lmhs")
+        .map(messageParser.parseLatestSolidSubtangleMilestoneMessage).filter(_.isDefined).map(_.get)
   }
 }

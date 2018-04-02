@@ -1,4 +1,4 @@
-import com.gameole.iri.stream.{ZeroMQMessage, ZeroMQMessageParser}
+package com.gameole.iri.stream
 
 import org.specs2._
 
@@ -508,9 +508,9 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
           )
         )
 
-        val validDNS = zeroMQMessageParser.parseChangedIPMessage(message)
+        val changedIP = zeroMQMessageParser.parseChangedIPMessage(message)
 
-        validDNS.get.hostname mustEqual "a.new.neighbor3.com"
+        changedIP.get.hostname mustEqual "a.new.neighbor3.com"
       }
 
       "respond with None when invalid ZeroMQMessage given for ChangedIPMessage" in {

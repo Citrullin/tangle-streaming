@@ -1,6 +1,6 @@
 package com.gameole.iri.stream
 
-import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
+import com.gameole.iri.stream.messages.milestoneMessages._
 import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
@@ -92,7 +92,7 @@ class ZeroMQMessageParser extends Logging{
       logger.debug("Trunk hash: " + unconfirmedTransactionMessage.trunkHash)
       logger.debug("Branch hash: " + unconfirmedTransactionMessage.branchHash)
       logger.debug("Address hash: " + unconfirmedTransactionMessage.addressHash)
-      logger.debug("Date Time: " + unconfirmedTransactionMessage.timestamp)
+      logger.debug("Timstamp: " + unconfirmedTransactionMessage.timestamp)
 
       Some(unconfirmedTransactionMessage)
     }else{
@@ -201,8 +201,6 @@ class ZeroMQMessageParser extends Logging{
     val messageType = zeroMQMessage.messageType
     val messageContent = zeroMQMessage.message
 
-    logger.info("isURI: " + isURI(messageContent.head))
-
     if(messageType == "antn" && messageContent.length == 1 && isURI(messageContent.head)){
       val nonTetheredNeighborMessage = AddedNonTetheredNeighborMessage(zeroMQMessage.message.head)
 
@@ -215,7 +213,8 @@ class ZeroMQMessageParser extends Logging{
     }
   }
 
-  def parseRefusedNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage): Option[RefusedNonTetheredNeighborMessage] = {
+  def parseRefusedNonTetheredNeighborMessage(zeroMQMessage: ZeroMQMessage):
+  Option[RefusedNonTetheredNeighborMessage] = {
     logger.debug("Parse RefusedNonTetheredNeighborMessage [ZeroMQ message]...")
 
     val messageType = zeroMQMessage.messageType
@@ -244,7 +243,10 @@ class ZeroMQMessageParser extends Logging{
     val messageType = zeroMQMessage.messageType
     val messageContent = zeroMQMessage.message
 
-    if(messageType == "dnscv" && messageContent.length == 2 && isHostname(messageContent.head) && isIP(messageContent(1))){
+    if(
+      messageType == "dnscv" && messageContent.length == 2 &&
+        isHostname(messageContent.head) && isIP(messageContent(1))
+    ){
       val validatingDNSMessage = ValidatingDNSMessage(zeroMQMessage.message.head, zeroMQMessage.message(1))
 
       logger.debug("Hostname: " + validatingDNSMessage.hostname)
@@ -293,7 +295,8 @@ class ZeroMQMessageParser extends Logging{
     }
   }
 
-  def parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage: ZeroMQMessage): Option[LatestSolidSubtangleMilestoneMessage] = {
+  def parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage: ZeroMQMessage):
+  Option[LatestSolidSubtangleMilestoneMessage] = {
     logger.debug("Parse LatestSolidSubtangleMilestoneMessage [ZeroMQ message]...")
 
     val messageType = zeroMQMessage.messageType

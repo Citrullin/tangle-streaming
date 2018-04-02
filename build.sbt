@@ -15,7 +15,6 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-core" % "2.8.2" % Runtime
 )
 
-
 scalacOptions in Test ++= Seq("-Yrangepos")
 
 organization in ThisBuild := "com.gameole"

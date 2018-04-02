@@ -9,7 +9,7 @@ import org.zeromq.ZMQ.Socket
 class ZeroMQStreamService(zeroMQServer: ServerConnectionConf, topic: String) extends Logging{
   logger.info("Start ZeroMQStreamService...")
 
-  val context: ZMQ.Context = ZMQ.context(1)
+  val context: ZMQ.Context = ZMQ.context(4)
   val subscriber: Socket = context.socket(ZMQ.SUB)
 
   logger.info(s"Open Connection to ZMQ stream on host ${zeroMQServer.host} and port ${zeroMQServer.port}")
@@ -29,7 +29,11 @@ class ZeroMQStreamService(zeroMQServer: ServerConnectionConf, topic: String) ext
 
     logger.info(s"Incoming ZMQ Message of type ${zmqMessage.messageType}...")
 
-    Stream.cons(zmqMessage, getMessageStream)
+    zmqMessage #:: getMessageStream
   }
 
+  def close(): Unit = {
+    subscriber.close()
+    context.term()
+  }
 }
