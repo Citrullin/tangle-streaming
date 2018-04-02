@@ -5,6 +5,7 @@ import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
 import org.apache.logging.log4j.Level
+import scalapb.GeneratedMessage
 
 class IRIStream(val host: String, val port: Int, val protocol: String) extends Logging{
 
@@ -14,6 +15,7 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
 
   logger.debug("Get ZeroMQ Stream...")
   private def stream = streamService.getMessageStream
+  val messageParser = new ZeroMQMessageParser
 
   def filter(t: UnconfirmedTransactionMessage): Stream[UnconfirmedTransactionMessage] = stream.unconfirmedTransactions
   def filter(t: ConfirmedTransactionMessage): Stream[ConfirmedTransactionMessage] = stream.confirmedTransactions
@@ -30,6 +32,13 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   def filter(t: LatestMilestoneIndexMessage): Stream[LatestMilestoneIndexMessage] = stream.latestMilestoneIndex
   def filter(t: LatestSolidSubtangleMilestoneMessage): Stream[LatestSolidSubtangleMilestoneMessage] =
     stream.latestSolidSubtangleMilestone
+
+  def foreach(f: GeneratedMessage => Unit): Unit = stream.foreach{
+    case m: GeneratedMessage => f(m)
+    case _ => logger.error("Message is not a GeneratedMessage.")
+  }
+
+  def map[T](f: Option[GeneratedMessage] => T): Stream[T] = stream.map(m => f(messageParser.parse(m)))
 
   def close(): Unit = {
     logger.debug("Close IRIStream...")

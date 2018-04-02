@@ -5,6 +5,7 @@ import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
 import org.apache.logging.log4j.Level
+import scalapb.GeneratedMessage
 
 
 class ZeroMQMessageParser extends Logging{
@@ -23,6 +24,26 @@ class ZeroMQMessageParser extends Logging{
     logger.debug("Message is not in the expected format.")
     logger.debug("Message type: " + message.messageType)
     logger.debug("Message content: " + message.message)
+  }
+
+  def parse(zeroMQMessage: ZeroMQMessage): Option[GeneratedMessage] = zeroMQMessage.messageType match{
+    case "tx" => parseUnconfirmedTransactionMessage(zeroMQMessage)
+    case "sn" => parseConfirmedTransactionMessage(zeroMQMessage)
+    case "rtsn" | "rtss" | "rtsv" | "rtsd" => parseInvalidTransactionMessage(zeroMQMessage)
+    case "rstat" => parseNodeStatisticMessage(zeroMQMessage)
+    case "->" => parseAddedNeighborMessage(zeroMQMessage)
+    case "antn" => parseAddedNonTetheredNeighborMessage(zeroMQMessage)
+    case "rntn" => parseRefusedNonTetheredNeighborMessage(zeroMQMessage)
+    case "dnscv" => parseValidatingDNSMessage(zeroMQMessage)
+    case "dnscc" => parseValidDNSMessage(zeroMQMessage)
+    case "dnscu" => parseChangedIPMessage(zeroMQMessage)
+    case "lmi" => parseLatestMilestoneIndexMessage(zeroMQMessage)
+    case "lmhs" => parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage)
+    case _ =>
+      logger.error("Message Type not known.")
+      logger.error("MessageType: " + zeroMQMessage.messageType)
+      logger.error("Message: " + zeroMQMessage.message)
+      None
   }
 
   def parseConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[ConfirmedTransactionMessage] = {
@@ -70,14 +91,15 @@ class ZeroMQMessageParser extends Logging{
         messageContent.take(2).forall(isTrytes) &&
         isTrytes(messageContent(3)) &&
         isNumber(messageContent(2)) &&
-        messageContent.slice(4, 6).forall(isNumber)
+        messageContent.slice(4, 6).forall(isNumber) &&
+        isNumber(messageContent(10))
     ){
       val unconfirmedTransactionMessage = UnconfirmedTransactionMessage(
         transactionHash = zeroMQMessage.message.head,
         addressHash = zeroMQMessage.message(1),
         amount = zeroMQMessage.message(2).toLong,
         tagHash = zeroMQMessage.message(3),
-        timestamp = zeroMQMessage.message(4).toInt * 1000,
+        timestamp = zeroMQMessage.message(10).toLong,
         indexInBundle = zeroMQMessage.message(5).toInt,
         maxIndexInBundle = zeroMQMessage.message(6).toInt,
         bundleHash = zeroMQMessage.message(7),

@@ -96,7 +96,7 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
           "ICWALLET9999999999999999999999999999999999999999999999999999999999999999999999999"
         unconfirmedTransactionMessage.get.amount mustEqual 0
         unconfirmedTransactionMessage.get.tagHash mustEqual "MJA9999999999999999ICWALLET"
-        unconfirmedTransactionMessage.get.timestamp mustEqual (1522637630 * 1000)
+        unconfirmedTransactionMessage.get.timestamp mustEqual 1522637652362L
         unconfirmedTransactionMessage.get.indexInBundle mustEqual 0
         unconfirmedTransactionMessage.get.maxIndexInBundle mustEqual 0
         unconfirmedTransactionMessage.get.bundleHash mustEqual
