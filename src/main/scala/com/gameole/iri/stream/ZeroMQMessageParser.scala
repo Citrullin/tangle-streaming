@@ -14,7 +14,7 @@ class ZeroMQMessageParser extends Logging{
   private def isTrytes(s: String): Boolean =
     s.map(char => (char.isLetter && char.isUpper) || (char == '9')).forall(_ == true)
   private def isAlpha(s: String): Boolean = s.forall(_.isLetter)
-  private def isNumber(s: String): Boolean = s.forall(_.isDigit)
+  private def isNumber(s: String): Boolean = (s.head == '-' || s.head.isDigit) && s.tail.forall(char => char.isDigit)
   private def isHostname(s: String): Boolean =
     s.map(char => char == '.' || (char.isLetter && char.isLower) || char.isDigit).forall(_ == true)
   private def isIP(s: String): Boolean = s.map(char => char == '.' || char.isDigit).forall(_ == true)
@@ -26,27 +26,39 @@ class ZeroMQMessageParser extends Logging{
     logger.debug("Message content: " + message.message)
   }
 
-  def parse(zeroMQMessage: ZeroMQMessage): Option[GeneratedMessage] = zeroMQMessage.messageType match{
-    case "tx" => parseUnconfirmedTransactionMessage(zeroMQMessage)
-    case "sn" => parseConfirmedTransactionMessage(zeroMQMessage)
-    case "rtsn" | "rtss" | "rtsv" | "rtsd" => parseInvalidTransactionMessage(zeroMQMessage)
-    case "rstat" => parseNodeStatisticMessage(zeroMQMessage)
-    case "->" => parseAddedNeighborMessage(zeroMQMessage)
-    case "antn" => parseAddedNonTetheredNeighborMessage(zeroMQMessage)
-    case "rntn" => parseRefusedNonTetheredNeighborMessage(zeroMQMessage)
-    case "dnscv" => parseValidatingDNSMessage(zeroMQMessage)
-    case "dnscc" => parseValidDNSMessage(zeroMQMessage)
-    case "dnscu" => parseChangedIPMessage(zeroMQMessage)
-    case "lmi" => parseLatestMilestoneIndexMessage(zeroMQMessage)
-    case "lmhs" => parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage)
-    case _ =>
-      logger.error("Message Type not known.")
-      logger.error("MessageType: " + zeroMQMessage.messageType)
-      logger.error("Message: " + zeroMQMessage.message)
-      None
+  def parse(zeroMQMessage: ZeroMQMessage): Option[GeneratedMessage] = {
+    if(isTrytes(zeroMQMessage.messageType)){
+      if(zeroMQMessage.message.lengthCompare(3) == 0){
+        parseConfirmedTransactionMessage(zeroMQMessage)
+      }else{
+        parseSimpleConfirmedTransactionMessage(zeroMQMessage)
+      }
+    }else{
+      zeroMQMessage.messageType match{
+        case "lmsi" => parseLatestSolidSubtangleMilestoneIndexMessage(zeroMQMessage)
+        case "tx" => parseUnconfirmedTransactionMessage(zeroMQMessage)
+        case "sn" => parseSolidMilestoneConfirmedTransactionMessage(zeroMQMessage)
+        case "rtsn" | "rtss" | "rtsv" | "rtsd" | "rtst" => parseInvalidTransactionMessage(zeroMQMessage)
+        case "rstat" => parseNodeStatisticMessage(zeroMQMessage)
+        case "->" => parseAddedNeighborMessage(zeroMQMessage)
+        case "antn" => parseAddedNonTetheredNeighborMessage(zeroMQMessage)
+        case "rntn" => parseRefusedNonTetheredNeighborMessage(zeroMQMessage)
+        case "dnscv" => parseValidatingDNSMessage(zeroMQMessage)
+        case "dnscc" => parseValidDNSMessage(zeroMQMessage)
+        case "dnscu" => parseChangedIPMessage(zeroMQMessage)
+        case "lmi" => parseLatestMilestoneIndexMessage(zeroMQMessage)
+        case "lmhs" => parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage)
+        case "mctn" => parseMonteCarloWalkMessage(zeroMQMessage)
+        case _ =>
+          logger.error("Message Type not known.")
+          logger.error("MessageType: " + zeroMQMessage.messageType)
+          logger.error("Message: " + zeroMQMessage.message)
+          None
+      }
+    }
   }
 
-  def parseConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[ConfirmedTransactionMessage] = {
+  def parseSolidMilestoneConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[SolidMilestoneConfirmedTransactionMessage] = {
     logger.debug("Parse ConfirmedTransactionMessage [ZeroMQ message]...")
 
     val messageType = zeroMQMessage.messageType
@@ -56,7 +68,7 @@ class ZeroMQMessageParser extends Logging{
       messageContent.length == 6 && messageType == "sn" &&
         isNumber(messageContent.head) && messageContent.tail.forall(isTrytes)
     ){
-      val confirmedTransactionMessage = ConfirmedTransactionMessage(
+      val confirmedTransactionMessage = SolidMilestoneConfirmedTransactionMessage(
         milestoneIndex = messageContent.head.toInt,
         transactionHash = messageContent(1),
         addressHash = messageContent(2),
@@ -331,6 +343,82 @@ class ZeroMQMessageParser extends Logging{
       logger.debug("Latest solid subtangle milestone hash: " + latestSolidSubtangleMilestoneMessage.hash)
 
       Some(latestSolidSubtangleMilestoneMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
+  }
+
+  def parseMonteCarloWalkMessage(zeroMQMessage: ZeroMQMessage): Option[MonteCarloWalkMessage] = {
+    logger.debug("Parse MonteCarloWalkMessage [ZeroMQ message]...")
+
+    val messageType = zeroMQMessage.messageType
+    val messageContent = zeroMQMessage.message
+
+    if(messageType == "mctn" && messageContent.length == 1){
+      val monteCarloWalkMessage = MonteCarloWalkMessage(messageContent.head.toInt)
+
+      logger.debug("Monte Carlo Walks: " + monteCarloWalkMessage.count)
+
+      Some(monteCarloWalkMessage)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
+  }
+
+  def parseSimpleConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[SimpleConfirmedTransactionMessage] = {
+    logger.debug("Parse SimpleConfirmedTransactionMessage [ZeroMQ message]...")
+
+    val messageType = zeroMQMessage.messageType
+    val messageBody = zeroMQMessage.message
+
+    if(isTrytes(messageType) && messageBody.isEmpty){
+      val confirmedTransaction = SimpleConfirmedTransactionMessage(messageType)
+
+      logger.debug("Address: " + confirmedTransaction.address)
+
+      Some(confirmedTransaction)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
+  }
+
+  def parseConfirmedTransactionMessage(zeroMQMessage: ZeroMQMessage): Option[ConfirmedTransactionMessage] = {
+    logger.debug("Parse ConfirmedTransactionMessage [ZeroMQ message]...")
+
+    val messageType = zeroMQMessage.messageType
+    val messageBody = zeroMQMessage.message
+
+    if(isTrytes(messageType) && messageBody(2) == "sn"){
+      val confirmedTransaction = ConfirmedTransactionMessage(messageType, messageBody.head, messageBody(1).toInt)
+
+      logger.debug("Address: " + confirmedTransaction.addressHash)
+      logger.debug("Transaction Hash: " + confirmedTransaction.transactionHash)
+      logger.debug("Milestone Index: " + confirmedTransaction.milestoneIndex)
+
+      Some(confirmedTransaction)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
+  }
+
+  def parseLatestSolidSubtangleMilestoneIndexMessage(zeroMQMessage: ZeroMQMessage):
+  Option[LatestSolidSubtangleMilestoneIndexMessage] = {
+    logger.debug("Parse LatestSolidSubtangleMilestoneIndexMessage [ZeroMQ message]...")
+
+    val messageType = zeroMQMessage.messageType
+    val messageBody = zeroMQMessage.message
+
+    if(messageType == "lmsi" && messageBody.lengthCompare(2) == 0){
+      val latestSolidSubtangleMilestone = LatestSolidSubtangleMilestoneIndexMessage(messageBody.head.toInt, messageBody(1).toInt)
+
+      logger.debug("Latest Index: " + latestSolidSubtangleMilestone.latestIndex)
+      logger.debug("Previous Index: " + latestSolidSubtangleMilestone.previousIndex)
+
+      Some(latestSolidSubtangleMilestone)
     }else{
       logWrongFormat(zeroMQMessage)
       None

@@ -21,7 +21,7 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
           )
         )
 
-        val confirmedTransactionMessage = zeroMQMessageParser.parseConfirmedTransactionMessage(message)
+        val confirmedTransactionMessage = zeroMQMessageParser.parseSolidMilestoneConfirmedTransactionMessage(message)
 
         confirmedTransactionMessage.get.milestoneIndex mustEqual 1234
         confirmedTransactionMessage.get.transactionHash mustEqual "TRANSACTIONHASH"
@@ -44,7 +44,7 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
           )
         )
 
-        val response = zeroMQMessageParser.parseConfirmedTransactionMessage(message)
+        val response = zeroMQMessageParser.parseSolidMilestoneConfirmedTransactionMessage(message)
 
         response.isEmpty mustEqual true
       }
@@ -62,7 +62,7 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
           )
         )
 
-        val response = zeroMQMessageParser.parseConfirmedTransactionMessage(message)
+        val response = zeroMQMessageParser.parseSolidMilestoneConfirmedTransactionMessage(message)
 
         response.isEmpty mustEqual true
       }

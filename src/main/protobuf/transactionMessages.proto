@@ -20,11 +20,25 @@ message InvalidTransactionMessage {
     string reason = 2;
 }
 
-message ConfirmedTransactionMessage {
+message SolidMilestoneConfirmedTransactionMessage {
     string transactionHash = 1;
     string addressHash = 2;
     string bundleHash = 3;
     string trunkHash = 4;
     string branchHash = 5;
     int32 milestoneIndex = 6;
+}
+
+message ConfirmedTransactionMessage {
+    string addressHash = 1;
+    string transactionHash = 2;
+    int32 milestoneIndex = 3;
+}
+
+message SimpleConfirmedTransactionMessage {
+    string address = 1;
+}
+
+message MonteCarloWalkMessage {
+    int32 count = 1;
 }

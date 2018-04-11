@@ -1,10 +1,11 @@
 package com.gameole.iri.stream
 
-import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
+import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
 import com.gameole.iri.stream.messages.nodeMessages._
 import com.gameole.iri.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
 import org.apache.logging.log4j.Level
+
 import scalapb.GeneratedMessage
 
 class IRIStream(val host: String, val port: Int, val protocol: String) extends Logging{
@@ -18,7 +19,8 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   val messageParser = new ZeroMQMessageParser
 
   def filter(t: UnconfirmedTransactionMessage): Stream[UnconfirmedTransactionMessage] = stream.unconfirmedTransactions
-  def filter(t: ConfirmedTransactionMessage): Stream[ConfirmedTransactionMessage] = stream.confirmedTransactions
+  def filter(t: SolidMilestoneConfirmedTransactionMessage): Stream[SolidMilestoneConfirmedTransactionMessage] =
+    stream.solidMilestoneConfirmedTransactions
   def filter(t: InvalidTransactionMessage): Stream[InvalidTransactionMessage] = stream.invalidTransactions
   def filter(t: NodeStatisticMessage): Stream[NodeStatisticMessage] = stream.nodeStatistics
   def filter(t: AddedNeighborMessage): Stream[AddedNeighborMessage] = stream.addedNeighbors
@@ -32,6 +34,13 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
   def filter(t: LatestMilestoneIndexMessage): Stream[LatestMilestoneIndexMessage] = stream.latestMilestoneIndex
   def filter(t: LatestSolidSubtangleMilestoneMessage): Stream[LatestSolidSubtangleMilestoneMessage] =
     stream.latestSolidSubtangleMilestone
+  def filter(t: MonteCarloWalkMessage): Stream[MonteCarloWalkMessage] = stream.monteCarloWalks
+  def filter(t: SimpleConfirmedTransactionMessage, address: String): Stream[SimpleConfirmedTransactionMessage] =
+    stream.simpleConfirmedTransactions(address)
+  def filter(t: ConfirmedTransactionMessage, address: String): Stream[ConfirmedTransactionMessage] =
+    stream.confirmedTransactions(address)
+  def filter(t: LatestSolidSubtangleMilestoneIndexMessage): Stream[LatestSolidSubtangleMilestoneIndexMessage] =
+    stream.latestsSolidSubtangleMilestone
 
   def foreach(f: GeneratedMessage => Unit): Unit =
     stream.map(messageParser.parse).filter(_.isDefined).map(_.get).foreach(f(_))
@@ -51,9 +60,9 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
         .map(messageParser.parseUnconfirmedTransactionMessage)
         .filter(_.isDefined).map(_.get)
 
-    def confirmedTransactions: Stream[ConfirmedTransactionMessage] =
+    def solidMilestoneConfirmedTransactions: Stream[SolidMilestoneConfirmedTransactionMessage] =
       stream.filter(_.messageType == "sn")
-        .map(messageParser.parseConfirmedTransactionMessage)
+        .map(messageParser.parseSolidMilestoneConfirmedTransactionMessage)
         .filter(_.isDefined).map(_.get)
 
     def invalidTransactions: Stream[InvalidTransactionMessage] =
@@ -96,5 +105,21 @@ class IRIStream(val host: String, val port: Int, val protocol: String) extends L
     def latestSolidSubtangleMilestone: Stream[LatestSolidSubtangleMilestoneMessage] =
       stream.filter(_.messageType == "lmhs")
         .map(messageParser.parseLatestSolidSubtangleMilestoneMessage).filter(_.isDefined).map(_.get)
+
+    def monteCarloWalks: Stream[MonteCarloWalkMessage] =
+      stream.filter(_.messageType == "mctn")
+      .map(messageParser.parseMonteCarloWalkMessage).filter(_.isDefined).map(_.get)
+
+    def simpleConfirmedTransactions(address: String): Stream[SimpleConfirmedTransactionMessage] =
+      stream.filter(msg => msg.messageType.forall(_.isUpper) && msg.message.isEmpty)
+        .map(messageParser.parseSimpleConfirmedTransactionMessage).filter(_.isDefined).map(_.get)
+
+    def confirmedTransactions(address: String): Stream[ConfirmedTransactionMessage] =
+      stream.filter(msg => msg.messageType.forall(_.isUpper) && msg.message.length == 3)
+      .map(messageParser.parseConfirmedTransactionMessage).filter(_.isDefined).map(_.get)
+
+    def latestsSolidSubtangleMilestone: Stream[LatestSolidSubtangleMilestoneIndexMessage] =
+      stream.filter(_.messageType == "lmsi")
+      .map(messageParser.parseLatestSolidSubtangleMilestoneIndexMessage).filter(_.isDefined).map(_.get)
   }
 }
