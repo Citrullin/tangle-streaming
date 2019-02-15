@@ -1,4 +1,4 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
 import org.specs2._
 
@@ -25,7 +25,7 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
 
         confirmedTransactionMessage.get.milestoneIndex mustEqual 1234
         confirmedTransactionMessage.get.transactionHash mustEqual "TRANSACTIONHASH"
-        confirmedTransactionMessage.get.addressHash mustEqual "ADDRESSHASH"
+        confirmedTransactionMessage.get.address mustEqual "ADDRESSHASH"
         confirmedTransactionMessage.get.bundleHash mustEqual "BUNDLEHASH"
         confirmedTransactionMessage.get.trunkHash mustEqual "TRUNKHASH"
         confirmedTransactionMessage.get.branchHash mustEqual "BRANCHHASH"
@@ -84,7 +84,8 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
             "CHQHIJ9VKNPLPJAYBOFHPDXFEGCUHCLBHZZQVKBQUXBIYEG9HJXUFKNZEYELCWUCDPJBVCZPOHANJ9COY",
             "TZVFKXIZJTWVGGECZNNMINFGCGYAPPDLIVUCIKTSARSRECTTTYRUYHKDV9UPYBWHCDBXLI9QDGFE99999",
             "9SBRKYJGRAXBRGMCOOUJYVXD9Y9AQOGIKVWWZDHFFAJOKTDJKZMWHMJC9RDNWGOYTXJYEBLWTHVZZ9999",
-            "1522637652362"
+            "1522637652362",
+            "IOTATESTTAG9999999999999999"
           )
         )
 
@@ -92,11 +93,11 @@ class ZeroMQMessageParserSpec extends mutable.Specification {
 
         unconfirmedTransactionMessage.get.transactionHash mustEqual
           "EIHARWZELNXMG9EXAYOKVZPJNVFGLWKVYNSHCLM9VAMFTBGGZI9EESQUM9GYADRCTBRAPLWYVKWCZ9999"
-        unconfirmedTransactionMessage.get.addressHash mustEqual
+        unconfirmedTransactionMessage.get.address mustEqual
           "ICWALLET9999999999999999999999999999999999999999999999999999999999999999999999999"
         unconfirmedTransactionMessage.get.amount mustEqual 0
-        unconfirmedTransactionMessage.get.tagHash mustEqual "MJA9999999999999999ICWALLET"
-        unconfirmedTransactionMessage.get.timestamp mustEqual 1522637652362L
+        unconfirmedTransactionMessage.get.obsoleteTag mustEqual "MJA9999999999999999ICWALLET"
+        unconfirmedTransactionMessage.get.timestampBundleCreation mustEqual 1522637630L
         unconfirmedTransactionMessage.get.indexInBundle mustEqual 0
         unconfirmedTransactionMessage.get.maxIndexInBundle mustEqual 0
         unconfirmedTransactionMessage.get.bundleHash mustEqual

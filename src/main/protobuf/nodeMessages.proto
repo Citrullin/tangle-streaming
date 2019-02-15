@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package com.gameole.iri.stream.messages;
+package org.iota.tangle.stream.messages;
 
 message NodeStatisticMessage {
     int32 toProcess = 1;

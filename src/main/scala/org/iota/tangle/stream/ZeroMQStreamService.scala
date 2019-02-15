@@ -1,7 +1,6 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
 import org.apache.logging.log4j.scala.Logging
-import org.apache.logging.log4j.Level
 import org.zeromq.ZMQ
 import org.zeromq.ZMQ.Socket
 

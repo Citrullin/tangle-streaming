@@ -1,6 +1,6 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
-import com.gameole.iri.stream.messages.transactionMessages.ConfirmedTransactionMessage
+import org.iota.tangle.stream.messages.transactionMessages.ConfirmedTransactionMessage
 import org.specs2._
 
 class ZeroMQParseMethodSpec extends mutable.Specification{

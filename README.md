@@ -27,7 +27,7 @@ If you are interested in all message, just use the foreach method. You can simpl
 to match against the different kind of message classes. 
 
 ```scala
-iriStream.foreach{
+tangleStream.foreach{
     case m: UnconfirmedTransactionMessage => handle(m)
     case m: ConfirmedTransactionMessage => handle(m)
     case m: InvalidTransactionMessage =>
@@ -43,17 +43,17 @@ iriStream.foreach{
 ```
 
 Available messages classes can be found in the package 
-com.gameole.iri.stream.messages.transactionMessages
+org.iota.tangle.stream.messages.transactionMessages
 
 ### Filter
 If you are only interested in one specific message type, the filter method is the way to go.
 
 ```scala
 // Create a new IRIStream Instance
-val iriStream = new IRIStream("ZeroMQhost", "zeroMQPort", "tcp")  
+val tangleStream = new TangleStream("ZeroMQhost", "zeroMQPort", "tcp")  
 
 // Only get UnconfirmedTransactionMessage
-iriStream.filter(UnconfirmedTransactionMessage()).foreach(message => 
+tangleStream.filter(UnconfirmedTransactionMessage()).foreach(message => 
   println(message.tagHash)
 )
 ```

@@ -1,4 +1,4 @@
-name := "iri-stream-provider"
+name := "tangle-stream-provider"
 
 version := "0.0.1"
 
@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 
 scalacOptions in Test ++= Seq("-Yrangepos")
 
-organization in ThisBuild := "com.gameole"
+organization in ThisBuild := "org.iota"
 
 PB.targets in Compile := Seq(
   scalapb.gen() -> (sourceManaged in Compile).value

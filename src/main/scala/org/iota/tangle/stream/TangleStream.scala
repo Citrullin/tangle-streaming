@@ -1,14 +1,12 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
-import com.gameole.iri.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
-import com.gameole.iri.stream.messages.nodeMessages._
-import com.gameole.iri.stream.messages.transactionMessages._
+import org.iota.tangle.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
+import org.iota.tangle.stream.messages.nodeMessages._
+import org.iota.tangle.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
-import org.apache.logging.log4j.Level
-
 import scalapb.GeneratedMessage
 
-class IRIStream(val host: String, val port: Int, val protocol: String) extends Logging{
+class TangleStream(val host: String, val port: Int, val protocol: String) extends Logging{
 
   logger.debug("Create ZeroMQ Connection...")
   val connectionConfiguration = new ServerConnectionConf(host, port, protocol)

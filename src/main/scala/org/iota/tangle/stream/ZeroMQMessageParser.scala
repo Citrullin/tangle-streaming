@@ -1,10 +1,9 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
-import com.gameole.iri.stream.messages.milestoneMessages._
-import com.gameole.iri.stream.messages.nodeMessages._
-import com.gameole.iri.stream.messages.transactionMessages._
+import org.iota.tangle.stream.messages.transactionMessages._
 import org.apache.logging.log4j.scala.Logging
-import org.apache.logging.log4j.Level
+import org.iota.tangle.stream.messages.milestoneMessages.{LatestMilestoneIndexMessage, LatestSolidSubtangleMilestoneIndexMessage, LatestSolidSubtangleMilestoneMessage}
+import org.iota.tangle.stream.messages.nodeMessages._
 import scalapb.GeneratedMessage
 
 
@@ -49,6 +48,7 @@ class ZeroMQMessageParser extends Logging{
         case "lmi" => parseLatestMilestoneIndexMessage(zeroMQMessage)
         case "lmhs" => parseLatestSolidSubtangleMilestoneMessage(zeroMQMessage)
         case "mctn" => parseMonteCarloWalkMessage(zeroMQMessage)
+        case "tx_trytes" => parseRawTxTrytes(zeroMQMessage)
         case _ =>
           logger.error("Message Type not known.")
           logger.error("MessageType: " + zeroMQMessage.messageType)
@@ -71,7 +71,7 @@ class ZeroMQMessageParser extends Logging{
       val confirmedTransactionMessage = SolidMilestoneConfirmedTransactionMessage(
         milestoneIndex = messageContent.head.toInt,
         transactionHash = messageContent(1),
-        addressHash = messageContent(2),
+        address = messageContent(2),
         trunkHash = messageContent(3),
         branchHash = messageContent(4),
         bundleHash = messageContent(5)
@@ -79,7 +79,7 @@ class ZeroMQMessageParser extends Logging{
 
       logger.debug("Confirmed with milestone index: " + confirmedTransactionMessage.milestoneIndex)
       logger.debug("Transaction Hash: " + confirmedTransactionMessage.transactionHash)
-      logger.debug("Address Hash: " + confirmedTransactionMessage.addressHash)
+      logger.debug("Address Hash: " + confirmedTransactionMessage.address)
       logger.debug("Trunk Hash: " + confirmedTransactionMessage.trunkHash)
       logger.debug("Branch Hash: " + confirmedTransactionMessage.branchHash)
       logger.debug("Bundle Hash: " + confirmedTransactionMessage.bundleHash)
@@ -98,20 +98,23 @@ class ZeroMQMessageParser extends Logging{
     val messageContent = zeroMQMessage.message
 
     if(
-      messageType == "tx" && messageContent.length == 11 &&
+      messageType == "tx" && messageContent.length == 12 &&
         messageContent.slice(0, 10).takeRight(3).forall(isTrytes) &&
         messageContent.take(2).forall(isTrytes) &&
         isTrytes(messageContent(3)) &&
         isNumber(messageContent(2)) &&
         messageContent.slice(4, 6).forall(isNumber) &&
-        isNumber(messageContent(10))
+        isNumber(messageContent(10)) &&
+        isTrytes(messageContent(11))
     ){
       val unconfirmedTransactionMessage = UnconfirmedTransactionMessage(
         transactionHash = zeroMQMessage.message.head,
-        addressHash = zeroMQMessage.message(1),
+        address = zeroMQMessage.message(1),
         amount = zeroMQMessage.message(2).toLong,
-        tagHash = zeroMQMessage.message(3),
-        timestamp = zeroMQMessage.message(10).toLong,
+        obsoleteTag = zeroMQMessage.message(3),
+        tag = zeroMQMessage.message(11),
+        timestampBundleCreation = zeroMQMessage.message(4).toLong,
+        timestampAttachment = zeroMQMessage.message(10).toLong,
         indexInBundle = zeroMQMessage.message(5).toInt,
         maxIndexInBundle = zeroMQMessage.message(6).toInt,
         bundleHash = zeroMQMessage.message(7),
@@ -121,13 +124,13 @@ class ZeroMQMessageParser extends Logging{
 
       logger.debug("Transaction hash: " + unconfirmedTransactionMessage.transactionHash)
       logger.debug("Iota amount: " + unconfirmedTransactionMessage.amount)
-      logger.debug("Tag hash: " + unconfirmedTransactionMessage.tagHash)
+      logger.debug("Tag: " + unconfirmedTransactionMessage.tag)
       logger.debug("Index in bundle: " + unconfirmedTransactionMessage.indexInBundle)
       logger.debug("Max index of bundle: " + unconfirmedTransactionMessage.maxIndexInBundle)
       logger.debug("Trunk hash: " + unconfirmedTransactionMessage.trunkHash)
       logger.debug("Branch hash: " + unconfirmedTransactionMessage.branchHash)
-      logger.debug("Address hash: " + unconfirmedTransactionMessage.addressHash)
-      logger.debug("Timstamp: " + unconfirmedTransactionMessage.timestamp)
+      logger.debug("Address: " + unconfirmedTransactionMessage.address)
+      logger.debug("Bundle creation timestamp: " + unconfirmedTransactionMessage.timestampBundleCreation)
 
       Some(unconfirmedTransactionMessage)
     }else{
@@ -394,7 +397,7 @@ class ZeroMQMessageParser extends Logging{
     if(isTrytes(messageType) && messageBody(2) == "sn"){
       val confirmedTransaction = ConfirmedTransactionMessage(messageType, messageBody.head, messageBody(1).toInt)
 
-      logger.debug("Address: " + confirmedTransaction.addressHash)
+      logger.debug("Address: " + confirmedTransaction.address)
       logger.debug("Transaction Hash: " + confirmedTransaction.transactionHash)
       logger.debug("Milestone Index: " + confirmedTransaction.milestoneIndex)
 
@@ -419,6 +422,24 @@ class ZeroMQMessageParser extends Logging{
       logger.debug("Previous Index: " + latestSolidSubtangleMilestone.previousIndex)
 
       Some(latestSolidSubtangleMilestone)
+    }else{
+      logWrongFormat(zeroMQMessage)
+      None
+    }
+  }
+
+  def parseRawTxTrytes(zeroMQMessage: ZeroMQMessage): Option[RawTransactionTrytes] = {
+    logger.debug("Parse TransactionSignature [ZeroMQ message]...")
+
+    val messageType = zeroMQMessage.messageType
+    val messageBody = zeroMQMessage.message
+
+    if(messageType == "tx_trytes" && messageBody.lengthCompare(2) == 0){
+      val transactionSignature = RawTransactionTrytes(messageBody.head, messageBody(1))
+
+      logger.debug("Raw tx trytes: " + transactionSignature.trytes)
+
+      Some(transactionSignature)
     }else{
       logWrongFormat(zeroMQMessage)
       None

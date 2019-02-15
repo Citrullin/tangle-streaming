@@ -1,3 +1,3 @@
-package com.gameole.iri.stream
+package org.iota.tangle.stream
 
 class ZeroMQMessage(val messageType: String, val message: List[String])
