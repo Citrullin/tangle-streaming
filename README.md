@@ -49,7 +49,7 @@ org.iota.tangle.stream.messages.transactionMessages
 If you are only interested in one specific message type, the filter method is the way to go.
 
 ```scala
-// Create a new IRIStream Instance
+// Create a new Tangle Instance
 val tangleStream = new TangleStream("ZeroMQhost", "zeroMQPort", "tcp")  
 
 // Only get UnconfirmedTransactionMessage
