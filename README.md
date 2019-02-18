@@ -1,6 +1,6 @@
-# IRI Stream Provider
+# Tangle Stream Provider
 
-This library gives you a nice Interface to the IRI zeroMQ Streaming API.
+This library gives you a nice Interface to the tangle ZMQ Streaming API.
 
 ## Usage
 
@@ -9,9 +9,14 @@ Since this library is not available in a maven repository at the moment, you nee
 
 ```bash
 sbt
-sbt:iri-stream-provider> clean
-sbt:iri-stream-provider> compile
-sbt:iri-stream-provider> publishLocal
+```
+
+You are now in the sbt repl. You are not able to compile & publish the code to your local maven repository.
+
+```bash
+clean
+compile
+publishLocal
 ```
 
 ### 2. Activate the ZeroMQ stream in IRI
